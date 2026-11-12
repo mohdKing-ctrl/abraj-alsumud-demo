@@ -33,7 +33,7 @@
       '<button type="button" class="s-btn line" data-ask>' + L('استفسار', 'Enquire') + '</button></div></div></article>';
   }
   function productsHtml() {
-    var q = C.norm(flt.q), list = D.products.filter(function (p) { return (!flt.cat || p.cat === flt.cat) && (!q || C.norm(p.name + ' ' + p.nameEn + ' ' + p.desc).indexOf(q) >= 0); });
+    var q = C.norm(flt.q), list = D.products.filter(function (p) { return (!flt.cat || p.cat === flt.cat) && (!q || C.norm(p.name + ' ' + p.nameEn + ' ' + p.desc).indexOf(q) >= 0); }).sort(C.Prod.newestFirst);
     return list.length ? '<div class="s-grid">' + list.map(cardHtml).join('') + '</div>' : '<p class="s-empty">' + L('لا توجد منتجات مطابقة.', 'No matching products.') + '</p>';
   }
   function postHtml(p) {
@@ -96,7 +96,7 @@
 
       '<footer class="s-foot"><div class="s-wrap s-foot-in"><div class="s-brand">' + logo('s-logo') + '<span><b>' + esc(name) + '</b><small>' + esc(T(b.activityAr, b.activity)) + '</small></span></div>' +
       '<div class="s-foot-meta">' + (b.cr ? '<span>' + L('السجل التجاري: ', 'C.R. No: ') + '<span dir="ltr">' + esc(b.cr) + '</span></span>' : '') + (T(s.footerAr, s.footerEn) ? '<span>' + esc(T(s.footerAr, s.footerEn)) + '</span>' : '') +
-      '<span>© ' + new Date().getFullYear() + ' ' + esc(name) + '</span><a href="' + ROOT + 'login/index.html">' + icon('lock', 14) + L('دخول الموظفين', 'Staff sign-in') + '</a></div></div></footer>' +
+      '</div></div></footer>' +                 // (sign-in is the button in the top bar; nothing about it down here)
       (waNum() ? '<a class="s-fab" target="_blank" rel="noopener" href="' + esc(waLink('')) + '" aria-label="WhatsApp">' + icon('whatsapp', 30) + '</a>' : '');
     bind();
   }

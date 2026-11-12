@@ -24,7 +24,7 @@
       if (flt.f === 'nophoto' && p.img) return false;
       if (!q) return true;
       return C.norm([p.name, p.nameEn, p.sku, p.supplier, p.shelf].concat(p.units.map(function (u) { return u.bc; })).join(' ')).indexOf(q) >= 0;
-    }).sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'ar'); });
+    }).sort(P.newestFirst);
   }
   function stockBadge(p) {
     return P.out(p) ? '<span class="badge bad">' + L('نافد', 'Out of stock') + '</span>' : P.low(p) ? '<span class="badge warn">' + L('منخفض', 'Low') + '</span>' : '';

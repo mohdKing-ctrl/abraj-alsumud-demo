@@ -77,7 +77,7 @@
     ].forEach(function (p) { put('posts', { id: p[0], titleAr: p[1], titleEn: p[2], textAr: p[3], textEn: p[4], tag: p[5], imgs: [], ts: now - p[6] * 86400, pinned: p[7], hidden: false, by: 'صاحب المحل' }); });
     put('sections', { id: 'se1', titleAr: 'نبيع بالجملة للمحلات والمزارع', titleEn: 'Wholesale for shops and farms', textAr: 'هل لديك محل أو مزرعة؟ نوفّر لك الكميات بأسعار الجملة مع إمكانية الشحن إلى ولايات السلطنة. أرسل لنا قائمة طلبك عبر واتساب ونجهّزها لك.', textEn: 'Do you run a shop or a farm? We supply quantities at wholesale prices and can ship across Oman. Send us your list on WhatsApp and we will prepare it.', imgs: [], order: 1, layout: 'side', hidden: false, ts: now });
     put('messages', { id: 'ms1', ts: now - 5400, read: false, name: 'ناصر العبري', phone: '99887766', email: '', text: 'السلام عليكم، كم سعر كرتون علب العسل لو أخذت 50 كرتون؟ وهل يوجد توصيل إلى عبري؟', product: 'علب عسل زجاجية' });
-    put('messages', { id: 'ms2', ts: now - 86400 * 2, read: true, name: 'أم محمد', phone: '99665544', email: '', text: 'هل أكياس الشفط مقاس 25/30 متوفرة؟', product: '' });
+    put('messages', { id: 'ms2', ts: now - 86400 * 2, read: true, name: 'أبو أحمد', phone: '99665544', email: '', text: 'هل أكياس الشفط مقاس 25/30 متوفرة؟', product: '' });
     [['sb1', 'حمد الشكيلي', '99001122'], ['sb2', 'مزرعة الوادي', '99003344'], ['sb3', 'يوسف البوسعيدي', '99005566']].forEach(function (s, i) { put('subscribers', { id: s[0], name: s[1], phone: s[2], email: '', ts: now - (i + 1) * 86400 * 3 }); });
   }
   var media = {}; media[LOGO] = 'img/logo.jpg';

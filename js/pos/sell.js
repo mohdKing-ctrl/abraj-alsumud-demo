@@ -34,7 +34,7 @@
       if (!q) return true;
       var hay = C.norm([p.name, p.nameEn, p.sku].concat(p.units.map(function (u) { return u.bc; })).join(' '));
       return hay.indexOf(q) >= 0;
-    });
+    }).sort(P.newestFirst);
   }
   function gridHtml() {
     var list = matches();

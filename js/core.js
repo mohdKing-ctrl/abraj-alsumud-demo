@@ -255,6 +255,8 @@
         return { i: i, u: u, price: price };
       }).filter(function (x) { return x.price > 0; });
     },
+    /* list order: the product added last comes FIRST, so a new product is seen at once (added at the same moment: by name) */
+    newestFirst: function (a, b) { return (num(b.created) - num(a.created)) || String(a.name).localeCompare(String(b.name), 'ar'); },
     low: function (p) { return num(p.minStock) > 0 && Prod.total(p) <= num(p.minStock); },
     out: function (p) { return Prod.total(p) <= 0; }
   };

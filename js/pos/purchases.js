@@ -20,7 +20,7 @@
           (Store.can('stock') ? '<button type="button" class="btn soft block mt" id="pp-new">' + icon('camera') + L('منتج جديد غير موجود - أضفه بالصورة', 'A new product - add it by photo') + '</button>' : '') });
       function list() {
         var q = C.norm(m.el.querySelector('#pp-q').value);
-        var rows = S.products.filter(function (p) { return !q || C.norm([p.name, p.nameEn, p.sku].concat(p.units.map(function (u) { return u.bc; })).join(' ')).indexOf(q) >= 0; }).slice(0, 40);
+        var rows = S.products.filter(function (p) { return !q || C.norm([p.name, p.nameEn, p.sku].concat(p.units.map(function (u) { return u.bc; })).join(' ')).indexOf(q) >= 0; }).sort(P.newestFirst).slice(0, 40);
         m.el.querySelector('#pp-list').innerHTML = rows.length ? rows.map(function (p) {
           return '<button type="button" class="inv-card" data-id="' + esc(p.id) + '" style="padding:8px">' + Media.thumb(p.img, P.name(p), C.catOf(S.settings, p.cat).c) + '<span class="grow"><span class="nm">' + esc(P.name(p)) + '</span><br><span class="meta">' + L('الموجود: ', 'In stock: ') + esc(P.breakdown(p, P.total(p))) + '</span></span></button>';
         }).join('') : '<p class="muted center">' + L('لا توجد نتائج', 'No results') + '</p>';

@@ -154,7 +154,7 @@
     var products = all('products').filter(function (p) { return p.site && !p.archived; }).map(function (p) {
       return { id: p.id, name: p.name || '', nameEn: p.nameEn || '', cat: p.cat || '', img: p.img || '', desc: p.desc || '', descEn: p.descEn || '',
         units: (p.units || []).filter(function (u) { return num(u.r) > 0 || num(u.w) > 0; }).map(function (u) { return { n: u.n, e: u.e, f: u.f, r: showPrice ? num(u.r) : 0 }; }),
-        ws: (p.units || []).some(function (u) { return num(u.w) > 0; }), out: total(p) <= 0 };
+        ws: (p.units || []).some(function (u) { return num(u.w) > 0; }), out: total(p) <= 0, created: p.created || 0 };
     });
     var posts = all('posts').filter(function (p) { return !p.hidden; }).sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
     var sections = all('sections').filter(function (p) { return !p.hidden; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
