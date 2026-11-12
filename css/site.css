@@ -165,3 +165,22 @@ body.has-modal{overflow:hidden}
 
 /* phone: the category buttons are one row that slides sideways, not six rows */
 @media (max-width:860px){.s-chips{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding-bottom:6px;margin-inline:-16px;padding-inline:16px;scrollbar-width:none}.s-chips::-webkit-scrollbar{display:none}.s-chips button{flex:none}}
+
+/* phone: the "three lines" button and the list of sections it opens (on a computer the links sit in the top bar instead) */
+.s-menu-btn,.s-drop{display:none}
+@media (max-width:860px){
+  .s-menu-btn{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--g700);color:#fff;flex:none}
+  .s-menu-btn:active{background:var(--g800)}
+  .s-right>.s-btn.wa{display:none}                      /* WhatsApp stays as the round floating button and inside the list */
+  .s-brand{min-width:0;flex:1 1 auto;gap:8px}.s-brand span{min-width:0}.s-brand b{font-size:15.5px;line-height:1.2}   /* the name may sit on two lines, never cut inside a word */
+  .s-login{padding:6px 9px;gap:5px;min-height:44px}.s-login span{font-size:13px}
+  .s-lang{min-height:44px}
+  .s-right{flex:none}
+  .s-drop{position:absolute;inset-inline:0;top:100%;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 18px 30px rgba(8,40,28,.16);padding:8px 14px 14px;flex-direction:column;gap:2px;max-height:calc(100dvh - 70px);overflow-y:auto}
+  .s-drop.open{display:flex}
+  .s-drop a{display:flex;align-items:center;gap:14px;padding:14px 12px;border-radius:12px;font-weight:800;font-size:17px;color:var(--ink)}
+  .s-drop a+a{border-top:1px solid var(--line)}
+  .s-drop a:active{background:var(--g100)}
+  .s-drop a .ic{color:var(--g600)}
+  .s-drop a.wa{color:#178a45;border-top:1px solid var(--line)}.s-drop a.wa .ic{color:#1fa855}
+}

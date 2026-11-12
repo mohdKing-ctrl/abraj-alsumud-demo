@@ -58,10 +58,19 @@
     var cats = (b.cats || []).filter(function (c) { return D.products.some(function (p) { return p.cat === c.id; }); });
     var posts = D.posts.slice().sort(function (a, c) { return ((c.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || (c.ts || 0) - (a.ts || 0); });
     document.title = name + ' - ' + T(b.activityAr, b.activity);
-    var nav = (show.products && D.products.length ? '<a href="#products">' + L('المنتجات', 'Products') + '</a>' : '') + (show.posts && posts.length ? '<a href="#posts">' + L('العروض', 'Offers') + '</a>' : '') + (show.about ? '<a href="#about">' + L('من نحن', 'About') + '</a>' : '') + (show.contact ? '<a href="#contact">' + L('تواصل معنا', 'Contact') + '</a>' : '');
+    // the sections a visitor can jump to: links in the top bar on a computer, and behind the "three lines" button on a phone
+    var links = [];
+    if (show.products && D.products.length) links.push(['#products', L('المنتجات', 'Products'), 'box']);
+    if (show.posts && posts.length) links.push(['#posts', L('العروض', 'Offers'), 'tag']);
+    if (show.about) links.push(['#about', L('من نحن', 'About'), 'leaf']);
+    if (show.contact) links.push(['#contact', L('تواصل معنا', 'Contact'), 'phone']);
+    var nav = links.map(function (x) { return '<a href="' + x[0] + '">' + x[1] + '</a>'; }).join('');
+    var drop = '<nav class="s-drop" id="s-drop">' + links.map(function (x) { return '<a href="' + x[0] + '">' + icon(x[2], 22) + '<span>' + x[1] + '</span></a>'; }).join('') +
+      (waNum() ? '<a class="wa" target="_blank" rel="noopener" href="' + esc(waLink('')) + '">' + icon('whatsapp', 22) + '<span>' + L('راسلنا على واتساب', 'Message us on WhatsApp') + '</span></a>' : '') + '</nav>';
     app.innerHTML =
       '<header class="s-top"><div class="s-wrap s-bar"><a class="s-brand" href="#top">' + logo('s-logo') + '<span><b>' + esc(name) + '</b><small>' + esc(L('بهلاء - سلطنة عُمان', 'Bahla - Sultanate of Oman')) + '</small></span></a><nav class="s-nav">' + nav + '</nav>' +
-      '<div class="s-right"><a class="s-login" href="' + ROOT + 'login/index.html">' + icon('lock', 17) + '<span>' + L('تسجيل الدخول', 'Sign in') + '</span></a><button type="button" class="s-lang" id="s-lang">' + L('EN', 'ع') + '</button>' + (waNum() ? '<a class="s-btn wa" target="_blank" rel="noopener" href="' + esc(waLink('')) + '">' + icon('whatsapp', 18) + '<span class="hide-s">' + L('واتساب', 'WhatsApp') + '</span></a>' : '') + '</div></div></header>' +
+      '<div class="s-right"><a class="s-login" href="' + ROOT + 'login/index.html">' + icon('lock', 17) + '<span>' + L('تسجيل الدخول', 'Sign in') + '</span></a><button type="button" class="s-lang" id="s-lang">' + L('EN', 'ع') + '</button>' + (waNum() ? '<a class="s-btn wa" target="_blank" rel="noopener" href="' + esc(waLink('')) + '">' + icon('whatsapp', 18) + '<span class="hide-s">' + L('واتساب', 'WhatsApp') + '</span></a>' : '') +
+      (links.length ? '<button type="button" class="s-menu-btn" id="s-menu" aria-controls="s-drop" aria-expanded="false" aria-label="' + L('القائمة', 'Menu') + '">' + icon('menu', 24) + '</button>' : '') + '</div></div>' + drop + '</header>' +
 
       '<section class="s-hero" id="top"><div class="s-wrap s-hero-in' + (s.hero.img ? '' : ' solo') + '"><div><span class="s-kicker">' + icon('leaf', 16) + esc(L('موردون ووكلاء لشركات عالمية', 'Suppliers & agents for international companies')) + '</span>' +
       '<h1>' + esc(T(s.hero.titleAr, s.hero.titleEn)) + '</h1><p>' + para(T(s.hero.textAr, s.hero.textEn)) + '</p><div class="s-cta">' + (show.products && D.products.length ? '<a class="s-btn amber lg" href="#products">' + icon('box', 20) + L('تصفّح المنتجات', 'Browse products') + '</a>' : '') +
@@ -121,6 +130,20 @@
   }
   function bind() {
     document.getElementById('s-lang').onclick = function () { C.setLang(C.lang === 'ar' ? 'en' : 'ar'); };
+    // phone: the "three lines" button opens the list of sections; choosing one (or tapping elsewhere) closes it
+    var menuBtn = document.getElementById('s-menu'), dropEl = document.getElementById('s-drop');
+    var setMenu = function (open) {
+      if (!menuBtn) return;
+      dropEl.classList.toggle('open', open);
+      menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      menuBtn.innerHTML = icon(open ? 'x' : 'menu', 24);
+    };
+    if (menuBtn) {
+      menuBtn.onclick = function (e) { e.stopPropagation(); setMenu(!dropEl.classList.contains('open')); };
+      dropEl.onclick = function (e) { if (e.target.closest('a')) setMenu(false); };
+      document.addEventListener('click', function (e) { if (dropEl.classList.contains('open') && !e.target.closest('.s-top')) setMenu(false); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setMenu(false); });
+    }
     app.onclick = function (e) {
       var b, card;
       if ((b = e.target.closest('[data-c]'))) { flt.cat = b.getAttribute('data-c'); [].forEach.call(app.querySelectorAll('#s-cats button'), function (x) { x.classList.toggle('on', x === b); }); app.querySelector('#s-products').innerHTML = productsHtml(); return; }
