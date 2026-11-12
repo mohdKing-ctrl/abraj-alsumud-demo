@@ -41,11 +41,17 @@
       (p.tag ? '<span class="s-flag amber">' + esc(p.tag) + '</span>' : '') + (p.imgs && p.imgs.length > 1 ? '<span class="s-count">' + icon('image', 14) + p.imgs.length + '</span>' : '') + '</button>' +
       '<div class="s-body"><span class="s-date">' + C.fts(p.ts).slice(0, 10) + '</span><h3>' + esc(T(p.titleAr, p.titleEn)) + '</h3><p class="s-clamp">' + esc(T(p.textAr, p.textEn)) + '</p><button type="button" class="s-more" data-openpost>' + L('اقرأ المزيد', 'Read more') + '</button></div></article>';
   }
+  /* a "title + text" section. With a picture: text beside the picture. Without one: a tidy panel with an icon, title and text. */
+  function textSection(id, title, text, img, ic, alt) {
+    var head = title ? '<h2 class="s-h2 start">' + esc(title) + '</h2>' : '', body = '<p class="s-text">' + para(text) + '</p>';
+    if (img) return '<section class="s-sec' + (alt ? ' alt' : '') + '"' + (id ? ' id="' + id + '"' : '') + '><div class="s-wrap s-split"><div>' + head + body + '</div><img class="s-photo" loading="lazy" alt="" src="' + esc(Media.url(img)) + '"></div></section>';
+    return '<section class="s-sec s-sec-panel"' + (id ? ' id="' + id + '"' : '') + '><div class="s-wrap"><div class="s-panel"><span class="s-panel-ic">' + icon(ic, 30) + '</span><div>' + head + body + '</div></div></div></section>';
+  }
   function sectionHtml(s, i) {
     var imgs = s.imgs || [], title = T(s.titleAr, s.titleEn), text = T(s.textAr, s.textEn);
     if (s.layout === 'gallery' || imgs.length > 1) return '<section class="s-sec' + (i % 2 ? ' alt' : '') + '"><div class="s-wrap">' + (title ? '<h2 class="s-h2">' + esc(title) + '</h2>' : '') + (text ? '<p class="s-lead">' + para(text) + '</p>' : '') +
       (imgs.length ? '<div class="s-gallery">' + imgs.map(function (id) { return '<button type="button" data-zoom="' + esc(id) + '"><img loading="lazy" alt="" src="' + esc(Media.url(id)) + '"></button>'; }).join('') + '</div>' : '') + '</div></section>';
-    return '<section class="s-sec' + (i % 2 ? ' alt' : '') + '"><div class="s-wrap s-split' + (imgs[0] ? '' : ' noimg') + '"><div>' + (title ? '<h2 class="s-h2 start">' + esc(title) + '</h2>' : '') + '<p class="s-text">' + para(text) + '</p></div>' + (imgs[0] ? '<img class="s-photo" loading="lazy" alt="" src="' + esc(Media.url(imgs[0])) + '">' : '') + '</div></section>';
+    return textSection('', title, text, imgs[0], 'star', i % 2);
   }
   function fieldHtml(k, req) {
     var lab = { name: L('الاسم', 'Name'), phone: L('رقم الهاتف', 'Phone number'), email: L('البريد الإلكتروني', 'Email') }[k];
@@ -87,7 +93,7 @@
 
       (show.posts && posts.length ? '<section class="s-sec alt" id="posts"><div class="s-wrap"><h2 class="s-h2">' + esc(T(s.titles.posts.ar, s.titles.posts.en)) + '</h2><div class="s-posts">' + posts.map(postHtml).join('') + '</div></div></section>' : '') +
 
-      (show.about ? '<section class="s-sec" id="about"><div class="s-wrap s-split' + (s.about.img ? '' : ' noimg') + '"><div><h2 class="s-h2 start">' + esc(T(s.about.titleAr, s.about.titleEn)) + '</h2><p class="s-text">' + para(T(s.about.textAr, s.about.textEn)) + '</p></div>' + (s.about.img ? '<img class="s-photo" loading="lazy" alt="" src="' + esc(Media.url(s.about.img)) + '">' : '') + '</div></section>' : '') +
+      (show.about ? textSection('about', T(s.about.titleAr, s.about.titleEn), T(s.about.textAr, s.about.textEn), s.about.img, 'leaf', false) : '') +
 
       D.sections.map(sectionHtml).join('') +
 
