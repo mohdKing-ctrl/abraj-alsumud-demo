@@ -60,9 +60,10 @@
   function chatUrl(kind, phone, text) {
     var n = C.phoneIntl(phone), msg = text ? encodeURIComponent(text) : '';
     var q = [n ? 'phone=' + n : '', msg ? 'text=' + msg : ''].filter(Boolean).join('&');
+    // without a number WhatsApp opens its own contact list (phone: wa.me/?text=..., web: web.whatsapp.com/send?text=..., app: whatsapp://send?text=...)
     if (kind === 'app') return 'whatsapp://send' + (q ? '?' + q : '');
     if (kind === 'web') return 'https://web.whatsapp.com/send' + (q ? '?' + q : '');
-    return 'https://wa.me/' + n + (msg ? '?text=' + msg : '');
+    return 'https://wa.me/' + (n ? n : '') + (msg ? '?text=' + msg : '');
   }
   /* go to the chat. Returns false when a pop-up blocker stopped WhatsApp Web (the caller then shows a link to press). */
   function openChat(kind, phone, text) {
@@ -98,7 +99,7 @@
     };
     var m = C.modal({ title: icon('whatsapp') + ' ' + L('إرسال الفاتورة عبر واتساب', 'Send the bill on WhatsApp') + ' <span class="ltr muted small">' + esc(inv.number) + '</span>', size: 'md',
       body: '<div class="col">' + (mob ? '' : seg()) +
-        '<div class="field"><label>' + L('رقم واتساب العميل', "Customer's WhatsApp number") + '</label><input class="input ltr" id="w-ph" inputmode="tel" value="' + esc(inv.customerPhone || '') + '" placeholder="9xxxxxxx"><span class="hint">' + L('رقم عُماني من 8 أرقام، أو رقم دولي يبدأ بـ +', 'An 8-digit Oman number, or an international number starting with +') + '</span></div>' +
+        '<div class="field"><label>' + L('رقم واتساب العميل', "Customer's WhatsApp number") + '</label><input class="input ltr" id="w-ph" inputmode="tel" value="' + esc(inv.customerPhone || '') + '" placeholder="9xxxxxxx"><span class="hint">' + L('اختياري: 8 أرقام (أو رقم دولي يبدأ بـ +) ليفتح على محادثته مباشرة. اتركه فارغاً فيفتح واتساب وتختار العميل أو تكتب رقمه هناك.', 'Optional: 8 digits (or an international number starting with +) to land on his chat. Leave it empty and WhatsApp opens for you to pick the customer or type his number there.') + '</span></div>' +
         '<div class="field"><label>' + L('نص الرسالة (يمكنك تعديله)', 'Message text (you can edit it)') + '</label><textarea class="input" id="w-msg" rows="8" style="min-height:150px;font-size:14px">' + esc(message(inv)) + '</textarea></div>' +
         '<div class="field"><label>' + L('مقاس ملف PDF المرسل', 'Size of the PDF that is sent') + '</label><div class="seg" id="w-size" style="align-self:flex-start;flex-wrap:wrap">' + ['a4', '80', '58'].map(function (k) { return '<button type="button" data-sz="' + k + '" class="' + (size === k ? 'on' : '') + '">' + esc(L(Print.SIZES[k][0], Print.SIZES[k][1])) + '</button>'; }).join('') + '</div></div>' +
         '<div class="grid g2 keep"><button type="button" class="btn wa lg" id="w-text">' + icon('msg') + L('إرسال رسالة نصية', 'Send text message') + '</button>' +
@@ -135,10 +136,13 @@
     };
 
     /* the customer's number: needed to land in HIS chat. A number typed here is saved into the bill for next time. */
+    /* The customer's number is optional: with it WhatsApp opens straight on his chat; without it WhatsApp opens and the
+       customer is chosen (or his number typed) inside WhatsApp itself. A typed number is saved into the bill for next time. */
     function phone() {
       var ph = q('#w-ph').value.trim();
-      if (C.phoneIntl(ph).length < 8) { C.toast(L('اكتب رقم واتساب العميل أولاً', "Type the customer's WhatsApp number first"), 'warn'); q('#w-ph').classList.add('err'); q('#w-ph').focus(); return null; }
+      if (ph !== '' && C.phoneIntl(ph).length < 8) { C.toast(L('الرقم غير صحيح. اتركه فارغاً لتختار العميل داخل واتساب، أو اكتب 8 أرقام.', 'The number is not valid. Leave it empty to pick the customer inside WhatsApp, or type 8 digits.'), 'warn', 6000); q('#w-ph').classList.add('err'); q('#w-ph').focus(); return null; }
       q('#w-ph').classList.remove('err');
+      if (ph === '') return '';
       if (ph !== (inv.customerPhone || '') && !inv.void && (Store.can('sell') || Store.can('edit_inv'))) Store.touchInvoice(inv.id, { phone: ph }).then(function (d) { inv = d; }, function () {});
       return ph;
     }
@@ -153,7 +157,8 @@
       if (!txt) return C.toast(L('نص الرسالة فارغ', 'The message is empty'), 'warn');
       var kind = kindNow();
       if (!openChat(kind, ph, txt)) return blocked(kind, ph, txt);
-      say(icon('check', 18) + '<span>' + (mob ? L('فُتحت محادثة العميل والرسالة مكتوبة. اضغط إرسال.', "The customer's chat is open with the message typed. Press Send.")
+      if (!ph) say(icon('check', 18) + '<span>' + L('فُتح واتساب والرسالة جاهزة. اختر العميل من القائمة (أو ابحث برقمه) ثم اضغط إرسال.', 'WhatsApp opened with the message ready. Pick the customer from the list (or search his number), then press Send.') + '</span>');
+      else say(icon('check', 18) + '<span>' + (mob ? L('فُتحت محادثة العميل والرسالة مكتوبة. اضغط إرسال.', "The customer's chat is open with the message typed. Press Send.")
         : L('فُتحت محادثة العميل في ', "The customer's chat opened in ") + '<b>' + channelName(kind) + '</b>' + L(' والرسالة مكتوبة وجاهزة. اضغط إرسال فقط.', ' with the message typed and ready. Just press Send.')) + '</span>');
     };
 
@@ -163,7 +168,7 @@
       // phone / tablet: the share menu carries the real PDF file into WhatsApp
       if (mob && Pdf.canShare(pdf)) {
         Pdf.share(pdf).then(function (r) {
-          if (r === 'shared') say(icon('check', 18) + '<span>' + L('اختر «واتساب» ثم العميل واضغط إرسال: ', 'Choose "WhatsApp", then the customer, and press Send: ') + '<b class="ltr">' + esc(ph) + '</b></span>');
+          if (r === 'shared') say(icon('check', 18) + '<span>' + L('اختر «واتساب» ثم العميل واضغط إرسال', 'Choose "WhatsApp", then the customer, and press Send') + (ph ? ': <b class="ltr">' + esc(ph) + '</b>' : '') + '</span>');
           else if (r === 'unsupported') viaDownload(ph);
         });
         return;
@@ -174,7 +179,7 @@
     function viaDownload(ph) {
       var kind = kindNow();
       Pdf.download(pdf);
-      var steps = '<span>' + L('تم حفظ الملف ', 'The file ') + '<b class="ltr">' + esc(pdf.name) + '</b>' + L(' في «التنزيلات» وفُتحت محادثة العميل في ', " was saved to Downloads and the customer's chat opened in ") + '<b>' + (mob ? 'WhatsApp' : channelName(kind)) + '</b>.<br><b>' +
+      var steps = '<span>' + L('تم حفظ الملف ', 'The file ') + '<b class="ltr">' + esc(pdf.name) + '</b>' + (ph ? L(' في «التنزيلات» وفُتحت محادثة العميل في ', " was saved to Downloads and the customer's chat opened in ") : L(' في «التنزيلات» وفُتح ', ' was saved to Downloads and ')) + '<b>' + (mob ? 'WhatsApp' : channelName(kind)) + '</b>' + (ph ? '' : L('. افتح محادثة العميل (أو ابحث برقمه)', ' opened. Open the customer\'s chat (or search his number)')) + '.<br><b>' +
         L('اسحب الملف إلى المحادثة', 'Drag the file into the chat') + '</b>' + L(' (أو اضغط 📎 ثم «مستند» واختره) ثم اضغط إرسال.', ' (or press 📎, then "Document", and pick it), then press Send.') + '</span>';
       // the web tab must open while the click is fresh; the program is started a moment later so the download is not interrupted
       if (kind === 'app') { setTimeout(function () { openChat(kind, ph, ''); }, 600); say(icon('file', 18) + steps); }

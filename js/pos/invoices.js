@@ -48,7 +48,7 @@
           '<td><span class="badge ' + (i.type === 'wholesale' ? 'warn' : 'info') + '">' + (i.type === 'wholesale' ? L('جملة', 'Wholesale') : L('تجزئة', 'Retail')) + '</span></td>' +
           '<td class="t-end num"><b>' + f3(i.total) + '</b></td><td class="t-end num">' + (Calc.balance(i) > 0.0004 ? '<b style="color:var(--red)">' + f3(Calc.balance(i)) + '</b>' : '-') + '</td>' +
           '<td><span class="badge ' + st[2] + '">' + st[1] + '</span></td>' +
-          '<td class="act"><button type="button" class="icon-btn sm" data-print title="' + L('طباعة', 'Print') + '">' + icon('print', 18) + '</button><button type="button" class="icon-btn sm" data-wa title="WhatsApp" style="color:#1fa855">' + icon('whatsapp', 18) + '</button></td></tr>';
+          '<td class="act">' + (Store.can('edit_inv') && !i.void ? '<button type="button" class="icon-btn sm" data-edit title="' + L('تعديل الفاتورة', 'Edit bill') + '">' + icon('edit', 18) + '</button>' : '') + '<button type="button" class="icon-btn sm" data-print title="' + L('طباعة', 'Print') + '">' + icon('print', 18) + '</button><button type="button" class="icon-btn sm" data-wa title="WhatsApp" style="color:#1fa855">' + icon('whatsapp', 18) + '</button></td></tr>';
       }).join('') + '</tbody></table></div>' + (list.length > 400 ? '<p class="muted small center mt">' + L('تُعرض أول 400 فاتورة. ضيّق الفترة أو استخدم البحث.', 'Showing the first 400 bills. Narrow the period or use the search.') + '</p>' : '');
   }
   function draw() {
@@ -96,7 +96,8 @@
         '<dt>' + L('المدفوع', 'Paid') + '</dt><dd class="num">' + f3(Calc.paid(inv)) + '</dd>' + (bal > 0.0004 ? '<dt style="color:var(--red)">' + L('المتبقي', 'Balance') + '</dt><dd class="num" style="color:var(--red)">' + f3(bal) + '</dd>' : '') +
         (cost && !inv.void ? '<dt>' + L('ربح الفاتورة', 'Bill profit') + '</dt><dd class="num">' + f3(Calc.profit(inv)) + '</dd>' : '') + '</dl></div>',
       foot: (Store.isAdmin() ? '<button type="button" class="btn danger-soft" id="b-del" title="' + L('حذف نهائي', 'Delete for good') + '">' + icon('trash') + '</button>' : '') +
-        (canEdit ? '<button type="button" class="btn ghost" id="b-void">' + L('إلغاء الفاتورة', 'Void') + '</button><button type="button" class="btn ghost" id="b-edit">' + icon('edit') + L('تعديل', 'Edit') + '</button>' : '') +
+        (canEdit ? '<button type="button" class="btn ghost" id="b-void">' + L('إلغاء الفاتورة', 'Void') + '</button><button type="button" class="btn soft" id="b-edit">' + icon('edit') + L('تعديل الفاتورة', 'Edit bill') + '</button>'
+          : (!inv.void && !Store.isViewer() ? '<button type="button" class="btn ghost" id="b-noedit" style="opacity:.6">' + icon('lock', 16) + L('تعديل الفاتورة', 'Edit bill') + '</button>' : '')) +
         '<span class="grow"></span>' + (canPay ? '<button type="button" class="btn amber" id="b-pay">' + icon('money') + L('استلام دفعة', 'Receive payment') + '</button>' : '') +
         '<select class="input" id="b-size" style="width:auto">' + Print.sizeOptions(Print.size()) + '</select><button type="button" class="btn ghost" id="b-print">' + icon('print') + L('طباعة', 'Print') + '</button>' +
         '<button type="button" class="btn wa" id="b-wa">' + icon('whatsapp') + L('واتساب', 'WhatsApp') + '</button>' });
@@ -104,6 +105,7 @@
     on('#b-print', function () { Print.size(q('#b-size').value); Print.run(inv, q('#b-size').value); });
     on('#b-wa', function () { m.close(); WhatsApp.open(inv); });
     on('#b-edit', function () { m.close(); Sell.edit(inv); });
+    on('#b-noedit', function () { C.toast(L('تعديل الفواتير يحتاج صلاحية «تعديل وإلغاء الفواتير». يمنحها صاحب المحل من الإعدادات ← الموظفون.', 'Editing bills needs the "Edit and void bills" permission. The owner grants it under Settings → Workers.'), 'warn', 7000); });
     on('#b-pay', function () { m.close(); pay(inv); });
     on('#b-void', function () {
       var mm = C.modal({ title: L('إلغاء الفاتورة ', 'Void bill ') + esc(inv.number), size: 'sm', body: '<p class="mb">' + L('تبقى الفاتورة في القائمة بعلامة «ملغاة» وتعود البضاعة إلى المخزون.', 'The bill stays in the list marked VOID and the goods go back to stock.') + '</p><div class="field"><label>' + L('السبب', 'Reason') + '</label><input class="input" id="vr" maxlength="200"></div>',
@@ -144,6 +146,7 @@
       if (!row) return;
       var inv = Store.byId(S.invoices, row.getAttribute('data-id'));
       if (e.target.closest('[data-print]')) { Print.run(inv, Print.size()); return; }
+      if (e.target.closest('[data-edit]')) { Sell.edit(inv); return; }
       if (e.target.closest('[data-wa]')) { WhatsApp.open(inv); return; }
       view(inv.id);
     });

@@ -10,6 +10,9 @@ in his own browser only; the **Reset demo** button puts the example data back.
 | Sign-in (press "Sign in", no password) | `login/index.html` |
 | Point of sale | `pos/index.html` |
 | Website control panel | `admin/index.html` |
+| Supplier's own page | `supplier/index.html` |
+
+The sign-in screen of the demo lists its accounts with their passwords (owner, partner admin, cashier, storekeeper, supplier).
 
 To publish: upload the contents of this folder to any static host (GitHub Pages: push it as its own repository and switch
 Pages on for the main branch; or copy it into a folder of an existing site).

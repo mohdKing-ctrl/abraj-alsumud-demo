@@ -132,8 +132,8 @@
   }
 
   function draw() {
-    root.innerHTML = '<div class="tabs"><button type="button" data-tab="new" class="' + (tab === 'new' ? 'on' : '') + '">' + L('استلام بضاعة جديدة', 'Receive goods') + '</button><button type="button" data-tab="hist" class="' + (tab === 'hist' ? 'on' : '') + '">' + L('سجل المشتريات', 'Past receipts') + '</button><button type="button" data-tab="sup" class="' + (tab === 'sup' ? 'on' : '') + '">' + L('الموردون', 'Suppliers') + '</button></div>' +
-      (tab === 'new' ? newHtml() : tab === 'hist' ? histHtml() : supHtml());
+    root.innerHTML = '<div class="tabs"><button type="button" data-tab="new" class="' + (tab === 'new' ? 'on' : '') + '">' + L('استلام بضاعة جديدة', 'Receive goods') + '</button><button type="button" data-tab="hist" class="' + (tab === 'hist' ? 'on' : '') + '">' + L('سجل المشتريات', 'Past receipts') + '</button><button type="button" data-go="suppliers">' + L('الموردون والبضاعة المسلّمة لهم', 'Suppliers & goods handed to them') + ' ←</button></div>' +
+      (tab === 'new' ? newHtml() : histHtml());
   }
   function read() {
     var g = function (id) { var e = root.querySelector(id); return e ? e.value : null; }, v;

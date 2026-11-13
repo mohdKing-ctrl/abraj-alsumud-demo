@@ -17,7 +17,7 @@
     mode: 'server', user: null, features: {}, unread: 0,
     storage: { pos: { used: 0, count: 0, limit: 0 }, site: { used: 0, count: 0, limit: 0 } },
     settings: C.defaultSettings(), counter: 0, pcounter: 0,
-    products: [], customers: [], suppliers: [], invoices: [], purchases: [], expenses: [], reminders: [], moves: [],
+    products: [], customers: [], suppliers: [], invoices: [], purchases: [], expenses: [], reminders: [], moves: [], consign: [], cmoves: [], supplierAccounts: {},
     site: {}, posts: [], sections: [], subscribers: [], messages: []
   };
   var hooks = { authLost: null, storage: null };
@@ -73,7 +73,7 @@
       if (st.setup_needed) return 'setup';
       if (!st.user) return 'login';
       S.user = st.user;
-      if (kind === 'none') return 'ready';
+      if (kind === 'none' || st.user.role === 'supplier') return 'ready';     // a supplier account has its own small page and never loads the shop's data
       return (kind === 'admin' ? loadSite() : loadPos()).then(function () { return 'ready'; });
     });
   }
@@ -91,7 +91,8 @@
     return call('load').then(function (d) {
       adoptCommon(d);
       S.products = (d.products || []).map(fixProduct);
-      ['customers', 'suppliers', 'invoices', 'purchases', 'expenses', 'reminders', 'moves'].forEach(function (k) { S[k] = d[k] || []; });
+      ['customers', 'suppliers', 'invoices', 'purchases', 'expenses', 'reminders', 'moves', 'consign', 'cmoves'].forEach(function (k) { S[k] = d[k] || []; });
+      S.supplierAccounts = d.supplierAccounts || {};
       S.counter = d.counter || 0; S.pcounter = d.pcounter || 0; S.unread = d.unread || 0;
       // a brand-new install: write the default business details once (only the owner can)
       if (!d.settings && isAdmin()) return call('put', { col: 'settings', doc: S.settings }).then(function () {});
@@ -362,6 +363,11 @@
       var g = guard(); if (g) return g;
       return call('product_site', Object.assign({ id: id, site: !!on }, extra || {})).then(function () { var p = byId(S.products, id); if (p) { p.site = !!on; Object.assign(p, extra || {}); } });
     },
+    /* goods handed to suppliers / agents to sell for the shop */
+    consignGive: function (b) { var g = guard(); if (g) return g; return call('consign_give', b).then(function (r) { upsert(S.consign, r.alloc); S.cmoves.push(r.move); applyStock(r.stock); return r; }); },
+    consignReturn: function (b) { var g = guard(); if (g) return g; return call('consign_return', b).then(function (r) { upsert(S.consign, r.alloc); S.cmoves.push(r.move); applyStock(r.stock); return r; }); },
+    consignReport: function (b) { var g = guard(); if (g) return g; return call('consign_report', b).then(function (r) { upsert(S.consign, r.alloc); S.cmoves.push(r.move); return r; }); },
+    supplierAccount: function (sid, pw) { var g = guard(); if (g) return g; return call('supplier_account', { supplierId: sid, password: pw }).then(function () { S.supplierAccounts[sid] = 1; }); },
     users: function () { return call('users'); },
     addUser: function (u) { var g = guard(); if (g) return g; return call('user_add', u); },
     updateUser: function (u) { var g = guard(); if (g) return g; return call('user_update', u); },

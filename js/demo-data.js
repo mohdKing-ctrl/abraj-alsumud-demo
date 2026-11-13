@@ -3,7 +3,15 @@
    customers, suppliers and bills are invented examples so every screen has something to show. */
 (function () {
   'use strict';
-  var LOGO = 'de300000000000000001.jpg';                    // a photo name the demo answers with the file img/logo.jpg
+  var LOGO = 'de300000000000000001.jpg';
+  /* the demo's accounts: shown on the demo's sign-in screen with their passwords (the real system has no such list) */
+  var ACC = [
+    { pw: 'malik2026', icon: 'star', ar: 'صاحب المحل', en: 'Shop owner', roleAr: 'مدير', roleEn: 'Admin', canAr: 'كل شيء: البيع، المخزون، الأسعار، المشتريات، الموردون، التقارير، الإعدادات، الموظفون، الموقع.', canEn: 'Everything: selling, stock, prices, purchases, suppliers, reports, settings, workers, the website.' },
+    { pw: 'shareek2026', icon: 'star', ar: 'الشريك', en: 'The partner', roleAr: 'مدير', roleEn: 'Admin', canAr: 'نفس صلاحيات صاحب المحل كاملة.', canEn: 'The same full control as the owner.' },
+    { pw: 'kashier2026', icon: 'cart', ar: 'سالم - كاشير', en: 'Salim - cashier', roleAr: 'موظف', roleEn: 'Worker', canAr: 'يصنع الفواتير ويحفظها ويطبعها ويرسلها فقط. لا تعديل فواتير، لا أسعار شراء، لا إعدادات.', canEn: 'Makes, saves, prints and sends bills only. No editing bills, no purchase prices, no settings.' },
+    { pw: 'makhzan2026', icon: 'box', ar: 'خالد - أمين المخزن', en: 'Khalid - storekeeper', roleAr: 'موظف', roleEn: 'Worker', canAr: 'البيع، المنتجات والكميات، استلام البضاعة، الموردون، العملاء، ويرى سعر الشراء.', canEn: 'Selling, products and quantities, goods received, suppliers, customers; sees purchase prices.' },
+    { pw: 'mawrid2026', icon: 'truck', ar: 'شركة الواحة الزراعية', en: 'Al Waha Agricultural Co.', roleAr: 'مورد', roleEn: 'Supplier', canAr: 'صفحته فقط: البضاعة التي سلّمها له المحل، يسجّل ما باعه ويصحّح الكمية.', canEn: 'His page only: the goods the shop handed him; records sales and corrects the amount.' }
+  ];                    // a photo name the demo answers with the file img/logo.jpg
   function seed(db) {
     var C = window.Core, now = Math.floor(Date.now() / 1000), today = C.today(), day = function (n) { return C.addDays(today, -n); };
     var U = function (n, e, f, r, w, bc) { return { n: n, e: e, f: f, r: r, w: w, bc: bc || '' }; };
@@ -13,9 +21,11 @@
     settings.hoursAr ='السبت - الخميس: 8 صباحاً - 1 ظهراً، 4 عصراً - 9 مساءً'; settings.hours = 'Sat - Thu: 8 am - 1 pm, 4 pm - 9 pm';
     put('settings', Object.assign({ id: 'main' }, settings)); docs.settings.main = settings;
 
-    db.users = [{ id: 1, username: 'demo', name: 'صاحب المحل', role: 'admin', perms: [] },
-      { id: 2, username: 'salim', name: 'سالم (كاشير المحل)', role: 'staff', perms: ['sell', 'customers'] },
-      { id: 3, username: 'khalid', name: 'خالد (أمين المخزن)', role: 'staff', perms: ['sell', 'cost', 'stock', 'purchase', 'customers'] }];
+    db.users = [{ id: 1, username: 'owner', name: 'صاحب المحل', role: 'admin', perms: [], pw: ACC[0].pw },
+      { id: 2, username: 'partner', name: 'الشريك', role: 'admin', perms: [], pw: ACC[1].pw },
+      { id: 3, username: 'salim', name: 'سالم (كاشير المحل)', role: 'staff', perms: ['sell'], pw: ACC[2].pw },
+      { id: 4, username: 'khalid', name: 'خالد (أمين المخزن)', role: 'staff', perms: ['sell', 'cost', 'stock', 'purchase', 'customers'], pw: ACC[3].pw },
+      { id: 5, username: 'sup-s2', name: 'شركة الواحة الزراعية', role: 'supplier', perms: [], pw: ACC[4].pw, sid: 's2' }];
     db.session = null;
 
     var P = [
@@ -64,9 +74,19 @@
       put('purchases', { id: 'p' + n, no: n, number: 'PUR-' + String(n).padStart(5, '0'), date: day(x[0]), supplierId: x[1], supplierName: x[2], loc: 'wh', ref: 'S-' + (1040 + i), note: '', items: items, total: total, payments: [{ amount: paid, method: 'transfer', date: day(x[0]), by: 'صاحب المحل' }], created: now - x[0] * 86400, createdBy: 'خالد (أمين المخزن)' });
     });
     db.meta.pcounter = pu.length;
-    [[10, 'إيجار', 'إيجار المحل والمخزن', 250], [6, 'نقل وشحن', 'شحن بضاعة من مسقط', 35], [4, 'كهرباء وماء', 'فاتورة الشهر', 42.5], [1, 'رواتب', 'سلفة موظف', 60]].forEach(function (e, i) { put('expenses', { id: 'e' + i, date: day(e[0]), cat: e[1], title: e[2], amount: e[3], method: 'cash', createdBy: 'صاحب المحل', created: now }); });
+    // [days ago, category, place, description, amount, paid?, due in days]
+    [[10, 'إيجار', 'المحل', 'إيجار شهر نوفمبر', 150, true, 0], [10, 'إيجار', 'مخزن 1', 'إيجار شهر نوفمبر', 100, true, 0], [6, 'نقل وشحن', '', 'شحن بضاعة من مسقط', 35, true, 0], [4, 'كهرباء وماء', 'المحل', 'فاتورة الشهر', 42.5, true, 0], [1, 'رواتب', '', 'سلفة موظف', 60, true, 0],
+      [0, 'إيجار', 'مخزن 1', 'إيجار شهر ديسمبر', 100, false, 12], [2, 'كهرباء وماء', 'مخزن 1', 'فاتورة الكهرباء', 28.75, false, 3]].forEach(function (e, i) { put('expenses', { id: 'e' + i, date: day(e[0]), cat: e[1], place: e[2], title: e[3], amount: e[4], paid: e[5], due: e[5] ? '' : C.addDays(today, e[6]), method: 'cash', createdBy: 'صاحب المحل', created: now }); });
     put('reminders', { id: 'r1', text: 'طلب كراتين غاز 450 جرام من المورد قبل موسم الشتاء', due: C.addDays(today, 2), done: false, by: 'صاحب المحل', created: today });
     put('moves', { id: 'm1', ts: now - 86400 * 2, pid: prod.honey.id, name: prod.honey.name, type: 'transfer', loc: 'wh', to: 'shop', qty: 96, before: 1296, after: 1200, reason: 'تعبئة رف المحل', by: 'خالد (أمين المخزن)' });
+    // goods handed to the supplier 'شركة الواحة الزراعية' to sell for the shop
+    [['fruitfly', 120, 35, 9], ['rope', 60, 22, 7]].forEach(function (x, i) {
+      var p = prod[x[0]], id = 'c-s2-' + p.id;
+      put('consign', { id: id, supplierId: 's2', supplierName: 'شركة الواحة الزراعية', pid: p.id, name: p.name, nameEn: p.nameEn, unit: p.units[0].n, given: x[1], sold: x[2], created: now - x[3] * 86400, updated: now - 86400, lastReport: now - 86400 });
+      put('cmoves', { id: 'cm' + i + 'a', ts: now - x[3] * 86400, allocId: id, supplierId: 's2', supplierName: 'شركة الواحة الزراعية', pid: p.id, name: p.name, type: 'give', qty: x[1], unit: p.units[1] ? p.units[1].n : p.units[0].n, f: p.units[1] ? p.units[1].f : 1, count: p.units[1] ? x[1] / p.units[1].f : x[1], loc: 'wh', remainingAfter: x[1], by: 'صاحب المحل', byRole: 'admin', note: '' });
+      put('cmoves', { id: 'cm' + i + 'b', ts: now - 3 * 86400, allocId: id, supplierId: 's2', supplierName: 'شركة الواحة الزراعية', pid: p.id, name: p.name, type: 'sell', qty: Math.round(x[2] * 0.6), before: x[1], remainingAfter: x[1] - Math.round(x[2] * 0.6), by: 'شركة الواحة الزراعية', byRole: 'supplier', note: '' });
+      put('cmoves', { id: 'cm' + i + 'c', ts: now - 86400, allocId: id, supplierId: 's2', supplierName: 'شركة الواحة الزراعية', pid: p.id, name: p.name, type: 'sell', qty: x[2] - Math.round(x[2] * 0.6), before: x[1] - Math.round(x[2] * 0.6), remainingAfter: x[1] - x[2], by: 'شركة الواحة الزراعية', byRole: 'supplier', note: 'سوق الجمعة' });
+    });
     db.log = [{ ts: now - 86400 * 2, user: 'خالد (أمين المخزن)', type: 'stock_transfer', ref: prod.honey.name, detail: '1296 > 1200 (wh > shop)' }, { ts: now - 86400 * 7, user: 'خالد (أمين المخزن)', type: 'purchase_add', ref: 'PUR-00002', detail: '381.6' }];
 
     // the website
@@ -81,5 +101,5 @@
     [['sb1', 'حمد الشكيلي', '99001122'], ['sb2', 'مزرعة الوادي', '99003344'], ['sb3', 'يوسف البوسعيدي', '99005566']].forEach(function (s, i) { put('subscribers', { id: s[0], name: s[1], phone: s[2], email: '', ts: now - (i + 1) * 86400 * 3 }); });
   }
   var media = {}; media[LOGO] = 'img/logo.jpg';
-  window.ABRAJ_DEMO = { seed: seed, media: media };
+  window.ABRAJ_DEMO = { seed: seed, media: media, accounts: ACC };
 })();

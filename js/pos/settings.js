@@ -78,36 +78,42 @@
   function workersHtml(el) {
     el.innerHTML = '<div class="card"><p class="muted">' + L('جارٍ التحميل...', 'Loading...') + '</p></div>';
     Store.users().then(function (r) {
-      var staff = r.users.filter(function (u) { return u.role === 'staff'; }), adm = Store.isAdmin(), max = r.max_staff || 0;
+      var staff = r.users.filter(function (u) { return u.role === 'staff' || u.role === 'admin'; }).length - 1, adm = Store.isAdmin(), max = r.max_staff || 0; staff = { length: Math.max(0, staff) };
       el.innerHTML = '<div class="card"><div class="row between wrap mb"><h3 style="margin:0">' + icon('users') + L('الموظفون', 'Workers') + ' <span class="badge ' + (max && staff.length >= max ? 'bad' : 'ok') + '">' + staff.length + ' / ' + max + '</span></h3>' +
-        (adm && S.features.staff_accounts && (!max || staff.length < max) ? '<button type="button" class="btn primary" id="w-add">' + icon('plus') + L('موظف جديد', 'New worker') + '</button>' : '') + '</div>' +
-        '<p class="small muted mb">' + L('كل موظف يدخل باسمه وكلمة مروره، ويرى فقط ما تسمح له به. باقتك تسمح بـ ', 'Each worker signs in with his own name and password and sees only what you allow. Your plan allows ') + max + L(' موظفاً.', ' workers.') + '</p>' +
-        '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + L('الاسم', 'Name') + '</th><th>' + L('اسم المستخدم', 'Username') + '</th><th>' + L('الدور', 'Role') + '</th><th>' + L('الصلاحيات', 'Permissions') + '</th><th></th></tr></thead><tbody>' +
+        (adm && S.features.staff_accounts && (!max || staff.length < max) ? '<button type="button" class="btn primary" id="w-add">' + icon('plus') + L('موظف أو شريك جديد', 'New worker or partner') + '</button>' : '') + '</div>' +
+        '<p class="small muted mb">' + L('كل موظف يدخل بكلمة مروره الخاصة فقط (بلا اسم مستخدم)، ويرى فقط ما تسمح له به. باقتك تسمح بـ ', 'Each worker signs in with his own password only (no username) and sees only what you allow. Your plan allows ') + max + L(' موظفاً.', ' workers.') + '</p>' +
+        '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>' + L('الاسم', 'Name') + '</th><th>' + L('الدور', 'Role') + '</th><th>' + L('الصلاحيات', 'Permissions') + '</th><th></th></tr></thead><tbody>' +
         r.users.map(function (u) {
-          var role = u.role === 'admin' ? '<span class="badge ok">' + L('صاحب المحل', 'Owner') + '</span>' : u.role === 'viewer' ? '<span class="badge info">' + L('دعم - عرض فقط', 'Support - view only') + '</span>' : '<span class="badge">' + L('موظف', 'Worker') + '</span>';
-          return '<tr><td><b>' + esc(u.name) + '</b></td><td class="ltr">' + esc(u.username) + '</td><td>' + role + '</td><td class="small">' + (u.role === 'staff' ? (u.perms.length ? u.perms.map(function (k) { var p = PERMS.filter(function (x) { return x[0] === k; })[0]; return '<span class="badge" style="margin:1px">' + (p ? p[1] : k) + '</span>'; }).join(' ') : L('لا شيء (عرض المخزون فقط)', 'None (sees stock only)')) : (u.role === 'admin' ? L('كل شيء', 'Everything') : L('يرى كل شيء ولا يغيّر شيئاً', 'Sees everything, changes nothing'))) + '</td>' +
-            '<td class="act">' + (adm && u.role === 'staff' ? '<button type="button" class="icon-btn sm" data-wedit="' + u.id + '" title="' + L('تعديل الصلاحيات', 'Edit permissions') + '">' + icon('edit', 18) + '</button><button type="button" class="icon-btn sm" data-wpass="' + u.id + '" title="' + L('كلمة مرور جديدة', 'New password') + '">' + icon('lock', 18) + '</button><button type="button" class="icon-btn sm red" data-wdel="' + u.id + '">' + icon('trash', 18) + '</button>' : '') + '</td></tr>';
+          var role = u.role === 'admin' ? '<span class="badge ok">' + L('مدير - صلاحية كاملة', 'Admin - full control') + '</span>' : u.role === 'viewer' ? '<span class="badge info">' + L('دعم - عرض فقط', 'Support - view only') + '</span>' : u.role === 'supplier' ? '<span class="badge warn">' + L('مورد - صفحته فقط', 'Supplier - his page only') + '</span>' : '<span class="badge">' + L('موظف', 'Worker') + '</span>';
+          var mine = u.id === S.user.id, canTouch = adm && !mine && u.role !== 'viewer';
+          return '<tr><td><b>' + esc(u.name) + '</b></td><td>' + role + '</td><td class="small">' + (u.role === 'staff' ? (u.perms.length ? u.perms.map(function (k) { var p = PERMS.filter(function (x) { return x[0] === k; })[0]; return '<span class="badge" style="margin:1px">' + (p ? p[1] : k) + '</span>'; }).join(' ') : L('لا شيء (عرض المخزون فقط)', 'None (sees stock only)')) : (u.role === 'admin' ? L('كل شيء', 'Everything') : u.role === 'supplier' ? L('يرى بضاعته ويسجّل ما باعه', 'Sees his goods, records what he sold') : L('يرى كل شيء ولا يغيّر شيئاً', 'Sees everything, changes nothing'))) + '</td>' +
+            '<td class="act">' + (canTouch ? (u.role === 'staff' ? '<button type="button" class="icon-btn sm" data-wedit="' + u.id + '" title="' + L('تعديل الصلاحيات', 'Edit permissions') + '">' + icon('edit', 18) + '</button>' : '') + (u.role !== 'supplier' ? '<button type="button" class="icon-btn sm" data-wpass="' + u.id + '" title="' + L('كلمة مرور جديدة', 'New password') + '">' + icon('lock', 18) + '</button>' : '') + '<button type="button" class="icon-btn sm red" data-wdel="' + u.id + '">' + icon('trash', 18) + '</button>' : '') + (mine ? '<span class="small muted">' + L('أنت', 'you') + '</span>' : '') + '</td></tr>';
         }).join('') + '</tbody></table></div></div>';
       el.onclick = function (e) {
         var b, find = function (id) { return r.users.filter(function (u) { return u.id === +id; })[0]; };
         if (e.target.closest('#w-add')) return workerForm(null, el);
         if ((b = e.target.closest('[data-wedit]'))) return workerForm(find(b.getAttribute('data-wedit')), el);
         if ((b = e.target.closest('[data-wpass]'))) return passForm(find(b.getAttribute('data-wpass')));
-        if ((b = e.target.closest('[data-wdel]'))) { var u = find(b.getAttribute('data-wdel')); C.confirmBox(L('حذف الموظف «', 'Delete worker "') + u.name + L('»؟ يخرج من النظام فوراً وتبقى فواتيره.', '"? He is signed out at once; his bills stay.'), L('حذف', 'Delete'), true).then(function (y) { if (y) Store.delUser(u.id).then(function () { workersHtml(el); }, function (er) { C.toast(C.errText(er), 'err'); }); }); }
+        if ((b = e.target.closest('[data-wdel]'))) { var u = find(b.getAttribute('data-wdel')); C.confirmBox(L('حذف حساب «', 'Delete the account of "') + u.name + L('»؟ يخرج من النظام فوراً وتبقى سجلاته.', '"? Signed out at once; the records stay.'), L('حذف', 'Delete'), true).then(function (y) { if (y) Store.delUser(u.id).then(function () { workersHtml(el); }, function (er) { C.toast(C.errText(er), 'err'); }); }); }
       };
     }, function (e) { el.innerHTML = '<div class="note bad">' + esc(C.errText(e)) + '</div>'; });
   }
   function workerForm(u, el) {
-    var m = C.modal({ title: u ? L('صلاحيات الموظف: ', 'Worker permissions: ') + esc(u.name) : L('موظف جديد', 'New worker'), size: 'lg',
-      body: '<div class="col"><div class="grid g3"><div class="field"><label>' + L('الاسم', 'Name') + '</label><input class="input" id="wf-n" value="' + esc(u ? u.name : '') + '"></div>' +
-        (u ? '' : '<div class="field"><label>' + L('اسم المستخدم', 'Username') + '</label><input class="input ltr" id="wf-u" autocapitalize="none" placeholder="ahmed"></div><div class="field"><label>' + L('كلمة المرور (8 خانات أو أكثر)', 'Password (8+ characters)') + '</label><input class="input ltr" id="wf-p" type="text" autocomplete="off"></div>') + '</div>' +
-        '<h4>' + L('ماذا يستطيع هذا الموظف؟', 'What may this worker do?') + '</h4><div id="wf-perms">' + permChecks(u ? u.perms : ['sell', 'cost', 'customers']) + '</div>' +
+    var m = C.modal({ title: u ? L('صلاحيات الموظف: ', 'Worker permissions: ') + esc(u.name) : L('موظف أو شريك جديد', 'New worker or partner'), size: 'lg',
+      body: '<div class="col">' + (u ? '' : '<div class="seg" id="wf-role" style="align-self:flex-start"><button type="button" data-r="staff" class="on">' + icon('users', 16) + L('موظف بصلاحيات محددة', 'Worker with chosen permissions') + '</button><button type="button" data-r="admin">' + icon('star', 16) + L('شريك - مدير بصلاحية كاملة', 'Partner - admin with full control') + '</button></div>') +
+        '<div class="grid g3"><div class="field"><label>' + L('الاسم', 'Name') + '</label><input class="input" id="wf-n" value="' + esc(u ? u.name : '') + '"></div>' +
+        (u ? '' : '<div class="field span2"><label>' + L('كلمة المرور الخاصة به (8 خانات أو أكثر)', 'His own password (8+ characters)') + '</label><input class="input ltr" id="wf-p" type="text" autocomplete="off"><span class="hint">' + L('الموظف يدخل بكلمة المرور وحدها بلا اسم مستخدم، لذلك يجب أن تختلف عن كلمات مرور الحسابات الأخرى.', 'The worker signs in with the password alone (no username), so it must differ from every other account\'s password.') + '</span></div>') + '</div>' +
+        '<div id="wf-permbox"><h4>' + L('ماذا يستطيع هذا الموظف؟', 'What may this worker do?') + '</h4><div id="wf-perms">' + permChecks(u ? u.perms : ['sell']) + '</div>' +
+        '<p class="small muted">' + L('موظف بصلاحية «البيع» فقط: يصنع الفواتير ويحفظها ويطبعها ويرسلها، ويرى المنتجات والكميات، ولا يستطيع تعديل فاتورة محفوظة ولا الإعدادات ولا المخزون.', 'A worker with "Sell" only: makes, saves, prints and sends bills, sees products and quantities; cannot edit a saved bill, the settings or the stock.') + '</p></div>' +
+        '<div id="wf-adminnote" class="note warn hide">' + icon('alert', 18) + '<span>' + L('الشريك المدير يستطيع كل ما تستطيعه أنت: الأسعار، الحذف، الإعدادات، الموظفون، النسخ الاحتياطي. لا يمكنه حذف حسابك أنت.', 'A partner admin can do everything you can: prices, deletions, settings, workers, backups. He cannot delete your account.') + '</span></div>' +
         '<p class="small muted">' + L('كل الموظفين يستطيعون رؤية المنتجات والكميات المتبقية والأسعار. بدون صلاحية «رؤية سعر الشراء» لا يظهر له سعر الشراء ولا الأرباح.', 'Every worker can see products, remaining quantities and selling prices. Without "see purchase prices" he sees no cost and no profit.') + '</p></div>',
       foot: '<button type="button" class="btn primary lg" id="wf-ok">' + icon('check') + L('حفظ', 'Save') + '</button>' });
-    var q = function (s) { return m.el.querySelector(s); };
+    var q = function (s) { return m.el.querySelector(s); }, role = 'staff';
+    if (q('#wf-role')) q('#wf-role').onclick = function (e) { var b = e.target.closest('[data-r]'); if (!b) return; role = b.getAttribute('data-r'); [].forEach.call(q('#wf-role').children, function (x) { x.classList.toggle('on', x === b); }); q('#wf-permbox').classList.toggle('hide', role === 'admin'); q('#wf-adminnote').classList.toggle('hide', role !== 'admin'); };
     q('#wf-ok').onclick = function () {
       var perms = [].map.call(m.el.querySelectorAll('#wf-perms input:checked'), function (i) { return i.value; }), name = q('#wf-n').value.trim();
-      var job = u ? Store.updateUser({ id: u.id, name: name, perms: perms }) : Store.addUser({ name: name, username: q('#wf-u').value.trim().toLowerCase(), password: q('#wf-p').value, perms: perms });
+      if (!name) return C.toast(L('اكتب اسم الموظف', "Type the worker's name"), 'warn');
+      var job = u ? Store.updateUser({ id: u.id, name: name, perms: perms }) : Store.addUser({ name: name, username: '', password: q('#wf-p').value, perms: perms, role: role });
       C.busy(q('#wf-ok'), job).then(function () { m.close(); C.toast(L('تم الحفظ', 'Saved')); workersHtml(el); }, function () {});
     };
   }
@@ -184,7 +190,7 @@
     };
   }
   function meHtml() {
-    return '<div class="card"><h3>' + icon('users') + esc(S.user.name) + '</h3><dl class="kv mb" style="max-width:420px"><dt>' + L('اسم المستخدم', 'Username') + '</dt><dd class="ltr">' + esc(S.user.username) + '</dd></dl>' +
+    return '<div class="card"><h3>' + icon('users') + esc(S.user.name) + '</h3><dl class="kv mb" style="max-width:420px"><dt>' + L('الدور', 'Role') + '</dt><dd>' + (Store.isAdmin() ? L('صاحب المحل', 'Owner') : Store.isViewer() ? L('دعم - عرض فقط', 'Support - view only') : L('موظف', 'Worker')) + '</dd></dl>' +
       '<div class="row wrap">' + (Store.isViewer() || Store.demo ? '' : '<button type="button" class="btn primary" id="me-pass">' + icon('lock') + L('تغيير كلمة المرور', 'Change password') + '</button>') +
       '<button type="button" class="btn ghost" id="me-lang">' + icon('globe') + L('English', 'العربية') + '</button></div></div>';
   }

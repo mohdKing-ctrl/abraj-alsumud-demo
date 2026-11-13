@@ -4,7 +4,7 @@
   'use strict';
   var C = window.Core, L = C.L, esc = C.esc, icon = C.icon, S = Store.s, ROOT = window.ROOT || '';
   var root = document.getElementById('auth');
-  var next = (/[?&]next=(pos|admin)/.exec(location.search) || [])[1] || '';
+  var next = (/[?&]next=(pos|admin|supplier)/.exec(location.search) || [])[1] || '';
 
   function art() {
     return '<div class="auth-art">' +
@@ -26,43 +26,50 @@
 
   function showLogin() {
     shell('<h2>' + L('تسجيل الدخول', 'Sign in') + '</h2>' +
-      (Store.demo ? '<div class="note warn">' + icon('star', 18) + '<span>' + L('نسخة تجريبية: اضغط «دخول» مباشرة، لا تحتاج كلمة مرور.', 'Demo copy: just press "Sign in", no password needed.') + '</span></div>' : '') +
+      (Store.demo ? '<div class="note warn">' + icon('star', 18) + '<span>' + L('نسخة تجريبية: اختر حساباً من القائمة بالأسفل (تُكتب كلمة مروره بنفسها) ثم اضغط «دخول».', 'Demo copy: pick an account from the list below (its password is filled in for you), then press "Sign in".') + '</span></div>'
+        : '<p class="muted">' + L('اكتب كلمة المرور الخاصة بك فقط. لكل شخص كلمة مرور خاصة به تفتح حسابه.', 'Type your own password only. Each person has a password of their own that opens their account.') + '</p>') +
       '<form id="f" class="col" autocomplete="on">' +
-      '<div class="field"><label for="u">' + L('اسم المستخدم', 'Username') + '</label><input class="input ltr" id="u" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required' + (Store.demo ? ' value="demo"' : '') + '></div>' +
-      '<div class="field"><label for="p">' + L('كلمة المرور', 'Password') + '</label><input class="input ltr" id="p" name="password" type="password" autocomplete="current-password"' + (Store.demo ? ' value="demo-demo"' : ' required') + '></div>' +
-      '<button class="btn primary lg block" id="go">' + icon('lock') + L('دخول', 'Sign in') + '</button></form>');
+      '<div class="field"><label for="p">' + L('كلمة المرور', 'Password') + '</label><div class="row"><input class="input ltr grow" id="p" name="password" type="password" autocomplete="current-password" style="font-size:20px;letter-spacing:2px;min-height:52px"' + (Store.demo ? ' value="demo-demo"' : ' required') + '><button type="button" class="icon-btn" id="peek" title="' + L('إظهار', 'Show') + '" style="width:48px;height:52px">' + icon('eye') + '</button></div></div>' +
+      '<button class="btn primary lg block" id="go">' + icon('lock') + L('دخول', 'Sign in') + '</button></form>' + (Store.demo ? demoAccounts() : ''));
     var f = document.getElementById('f');
+    if (Store.demo) { f.p.value = ''; document.getElementById('demo-acc').onclick = function (e) { var b = e.target.closest('[data-pw]'); if (!b) return; f.p.value = b.getAttribute('data-pw'); f.p.type = 'text'; [].forEach.call(document.querySelectorAll('[data-pw]'), function (x) { x.classList.toggle('on', x === b); }); }; }
+    document.getElementById('peek').onclick = function () { f.p.type = f.p.type === 'password' ? 'text' : 'password'; };   // workers can check what they typed
     f.onsubmit = function (e) {
       e.preventDefault();
-      C.busy(document.getElementById('go'), Store.login(f.u.value, f.p.value)).then(afterLogin, function () {});
+      C.busy(document.getElementById('go'), Store.login('', f.p.value)).then(afterLogin, function () {});
     };
-    if (!Store.demo) f.u.focus();
+    if (!Store.demo) f.p.focus();
   }
 
+  /* the demo's accounts, with their passwords and what each one can do (never shown in the real system) */
+  function demoAccounts() {
+    var A = window.ABRAJ_DEMO && window.ABRAJ_DEMO.accounts ? window.ABRAJ_DEMO.accounts : [];
+    return '<div class="section-block" id="demo-acc"><h4>' + icon('users', 18) + L('حسابات النسخة التجريبية', 'Demo accounts') + '</h4><p class="small muted">' + L('اضغط على حساب لتجربته. في النظام الحقيقي لا تظهر هذه القائمة، ويعطي صاحب المحل كل شخص كلمة مروره بنفسه.', 'Press an account to try it. The real system shows no such list; the owner gives each person their password himself.') + '</p><div class="col" style="gap:8px;margin-top:8px">' +
+      A.map(function (a) { return '<button type="button" class="check" data-pw="' + esc(a.pw) + '" style="text-align:start;width:100%"><span style="flex:none">' + icon(a.icon || 'users', 22) + '</span><span><b>' + esc(L(a.ar, a.en)) + ' <span class="badge">' + esc(L(a.roleAr, a.roleEn)) + '</span></b><span>' + esc(L(a.canAr, a.canEn)) + '</span><span class="ltr" style="display:block;font-weight:800;color:var(--g700)">' + L('كلمة المرور: ', 'Password: ') + esc(a.pw) + '</span></span></button>'; }).join('') + '</div></div>';
+  }
   function showSetup() {
     shell('<h2>' + L('إعداد النظام لأول مرة', 'First-time setup') + '</h2>' +
-      '<p class="muted small">' + L('هذه الشاشة تظهر مرة واحدة فقط. أنشئ حساب صاحب المحل، ويمكن إضافة حساب دعم للعرض فقط.', 'This screen appears only once. Create the owner account; a view-only support account is optional.') + '</p>' +
+      '<p class="muted small">' + L('هذه الشاشة تظهر مرة واحدة فقط. أنشئ حساب صاحب المحل، ويمكن إضافة حساب دعم للعرض فقط. الدخول بعد ذلك يكون بكلمة المرور وحدها، فيجب أن تختلف كلمة مرور كل حساب عن الأخرى.', 'This screen appears only once. Create the owner account; a view-only support account is optional. Sign-in is then by password alone, so each account needs a different password.') + '</p>' +
       '<form id="f" class="col" autocomplete="off">' +
       '<div class="section-block"><h4>' + icon('users', 18) + L('حساب صاحب المحل (تحكم كامل)', 'Owner account (full control)') + '</h4><div class="col">' +
       '<div class="field"><label>' + L('الاسم', 'Name') + '</label><input class="input" name="name" required></div>' +
-      '<div class="field"><label>' + L('اسم المستخدم', 'Username') + '</label><input class="input ltr" name="username" autocapitalize="none" required pattern="[a-z0-9._-]{3,32}"></div>' +
       '<div class="field"><label>' + L('كلمة المرور (8 خانات أو أكثر)', 'Password (8+ characters)') + '</label><input class="input ltr" name="password" type="password" autocomplete="new-password" required minlength="8"></div>' +
       '</div></div>' +
       '<div class="section-block"><h4>' + icon('eye', 18) + L('حساب الدعم - للعرض فقط (اختياري)', 'Support account - view only (optional)') + '</h4><div class="col">' +
-      '<div class="field"><label>' + L('اسم المستخدم', 'Username') + '</label><input class="input ltr" name="vuser" autocapitalize="none" pattern="[a-z0-9._-]{3,32}"></div>' +
-      '<div class="field"><label>' + L('كلمة المرور', 'Password') + '</label><input class="input ltr" name="vpass" type="password" autocomplete="new-password" minlength="8"></div>' +
+      '<div class="field"><label>' + L('كلمة مرور حساب الدعم (مختلفة عن كلمة مرور صاحب المحل)', 'Support password (different from the owner\'s)') + '</label><input class="input ltr" name="vpass" type="password" autocomplete="new-password" minlength="8"></div>' +
       '</div></div>' +
       '<button class="btn primary lg block" id="go">' + L('إنشاء الحسابات والدخول', 'Create accounts and sign in') + '</button></form>');
     var f = document.getElementById('f');
     f.onsubmit = function (e) {
       e.preventDefault();
-      var body = { name: f.name.value.trim(), username: f.username.value.trim().toLowerCase(), password: f.password.value };
-      if (f.vuser.value.trim()) body.viewer = { username: f.vuser.value.trim().toLowerCase(), password: f.vpass.value, name: 'Support' };
+      var body = { name: f.name.value.trim(), username: 'owner', password: f.password.value };
+      if (f.vpass.value) body.viewer = { username: 'support', password: f.vpass.value, name: 'Support' };
       C.busy(document.getElementById('go'), Store.setup(body)).then(afterLogin, function () {});
     };
   }
 
   function afterLogin() {
+    if (S.user.role === 'supplier') return go('supplier');                 // a supplier account opens the supplier page only
     var site = !!S.features.website && Store.sees('site');
     if (next === 'admin' && site) return go('admin');
     if (next === 'pos' || !site) return go('pos');

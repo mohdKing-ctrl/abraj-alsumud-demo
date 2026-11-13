@@ -5,7 +5,7 @@
   'use strict';
   var C = window.Core, r3 = C.r3, num = C.num;
   var DEMO = window.ABRAJ_DEMO || null;
-  var KEY = DEMO ? 'abraj_demo_db_v1' : 'abraj_local_db_v1';
+  var KEY = DEMO ? 'abraj_demo_db_v2' : 'abraj_local_db_v2';
   var IDB = DEMO ? 'abraj_demo_media' : 'abraj_local_media';
   var GB = 1024 * 1024 * 1024;
   var LIMITS = { pos: 10 * GB, site: 10 * GB, max_staff: 15 };
@@ -30,7 +30,7 @@
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function now() { return Math.floor(Date.now() / 1000); }
   function me() { return db.session ? db.users.filter(function (u) { return u.id === db.session; })[0] || null : null; }
-  function pub(u) { return u ? { id: u.id, username: u.username, name: u.name, role: u.role, perms: u.perms || [] } : null; }
+  function pub(u) { return u ? { id: u.id, username: u.username, name: u.name, role: u.role, perms: u.perms || [], sid: u.sid || '' } : null; }
   function log(type, ref, detail) { db.log.unshift({ ts: now(), user: (me() || {}).name || '', type: type, ref: ref || '', detail: detail || '' }); if (db.log.length > 800) db.log.length = 800; }
   function usage() {
     var u = { pos: { used: 0, count: 0, limit: LIMITS.pos }, site: { used: 0, count: 0, limit: LIMITS.site } };
@@ -172,9 +172,9 @@
       return { ok: true, user: pub(me()) };
     },
     login: function (b) {
-      var name = String(b.username || '').toLowerCase().trim();
-      var u = db.users.filter(function (x) { return x.username === name; })[0];
-      if (!u && DEMO) u = db.users[0];                       // the demo lets anybody in
+      var name = String(b.username || '').toLowerCase().trim(), pw = String(b.password || '');
+      var u = db.users.filter(function (x) { return x.pw && pw && x.pw === pw; })[0] || (name ? db.users.filter(function (x) { return x.username === name; })[0] : null);
+      if (!u && DEMO && !pw) u = db.users[0];                // the demo: an empty password opens the owner account
       if (!u) throw err('bad_login');
       db.session = u.id;
       return { ok: true, user: pub(u) };
@@ -184,7 +184,8 @@
       if (!me()) throw err('not_logged_in');
       var r = { ok: true, user: pub(me()), features: A.status().features, storage: usage(), counter: db.meta.counter, pcounter: db.meta.pcounter,
         settings: col('settings').main || null, unread: all('messages').filter(function (m) { return !m.read; }).length };
-      ['products', 'customers', 'suppliers', 'invoices', 'purchases', 'expenses', 'reminders', 'moves'].forEach(function (k) { r[k] = clone(all(k)); });
+      ['products', 'customers', 'suppliers', 'invoices', 'purchases', 'expenses', 'reminders', 'moves', 'consign', 'cmoves'].forEach(function (k) { r[k] = clone(all(k)); });
+      r.supplierAccounts = {}; db.users.forEach(function (u) { if (u.role === 'supplier' && u.sid) r.supplierAccounts[u.sid] = u.id; });
       return r;
     },
     site_load: function () {
@@ -219,6 +220,15 @@
       if (c === 'products') {
         if (!String(doc.name || '').trim()) throw err('missing_name');
         doc.units = (doc.units || []).map(function (u) { return { n: u.n, e: u.e || '', f: num(u.f) || 1, r: r3(num(u.r)), w: r3(num(u.w)), bc: String(u.bc || '').trim() }; });
+        doc.sku = String(doc.sku || '').trim();
+        var codes = [doc.sku].concat(doc.units.map(function (u) { return u.bc; })).filter(Boolean);
+        if (new Set(codes).size !== codes.length) throw err('barcode_dup');
+        all('products').forEach(function (o) {
+          if (o.id === id) return;
+          var theirs = [o.sku || ''].concat((o.units || []).map(function (u) { return u.bc || ''; })).filter(Boolean);
+          var hit = codes.filter(function (c) { return theirs.indexOf(c) >= 0; })[0];
+          if (hit) throw err('barcode_taken', { code: hit, product: o.name });
+        });
         if (old) {
           doc.stock = old.stock; doc.created = old.created; doc.lastCost = old.lastCost || doc.cost || 0;
           var ch = [];
@@ -232,7 +242,7 @@
         }
         doc.minStock = r3(Math.max(0, num(doc.minStock)));
       }
-      if (c === 'expenses') { if (!(num(doc.amount) > 0)) throw err('bad_doc'); doc.amount = r3(num(doc.amount)); if (!old) { doc.created = now(); doc.createdBy = (me() || {}).name || ''; } }
+      if (c === 'expenses') { if (!(num(doc.amount) > 0)) throw err('bad_doc'); doc.amount = r3(num(doc.amount)); doc.paid = !('paid' in doc) || !!doc.paid; doc.place = String(doc.place || '').trim(); if (!old) { doc.created = now(); doc.createdBy = (me() || {}).name || ''; } }
       if ((c === 'posts' || c === 'sections') && !old) doc.ts = doc.ts || now();
       col(c)[id] = doc;
       release(old, doc);
@@ -404,35 +414,93 @@
     },
     users: function () { return { ok: true, users: db.users.map(pub), max_staff: LIMITS.max_staff }; },
     user_add: function (b) {
-      var name = String(b.username || '').toLowerCase().trim();
+      var name = String(b.username || '').toLowerCase().trim() || ('w' + C.uid().slice(0, 8));
       if (!/^[a-z0-9._-]{3,32}$/.test(name)) throw err('bad_username');
       if (String(b.password || '').length < 8) throw err('password_short');
+      if (db.users.some(function (u) { return u.pw && u.pw === b.password; })) throw err('password_taken');
       if (db.users.some(function (u) { return u.username === name; })) throw err('username_taken');
-      if (db.users.filter(function (u) { return u.role === 'staff'; }).length >= LIMITS.max_staff) throw err('staff_limit');
-      db.users.push({ id: db.users.reduce(function (m, u) { return Math.max(m, u.id); }, 0) + 1, username: name, name: b.name || name, role: 'staff', perms: b.perms || [] });
+      if (db.users.filter(function (u) { return u.role === 'staff' || u.role === 'admin'; }).length - 1 >= LIMITS.max_staff) throw err('staff_limit');
+      var role = b.role === 'admin' ? 'admin' : 'staff';
+      db.users.push({ id: db.users.reduce(function (m, u) { return Math.max(m, u.id); }, 0) + 1, username: name, name: b.name || name, role: role, perms: role === 'admin' ? [] : (b.perms || []), pw: String(b.password || '') });
       return { ok: true };
     },
     user_update: function (b) {
       var u = db.users.filter(function (x) { return x.id === b.id; })[0];
       if (!u) throw err('not_found');
-      if (u.role !== 'staff') throw err('protected_account');
-      u.name = b.name || u.username; u.perms = b.perms || [];
+      if (u.role !== 'staff' && u.role !== 'admin') throw err('protected_account');
+      u.name = b.name || u.username; u.perms = u.role === 'admin' ? [] : (b.perms || []);
       return { ok: true };
     },
     user_del: function (b) {
       var u = db.users.filter(function (x) { return x.id === b.id; })[0];
       if (!u) throw err('not_found');
-      if (u.role !== 'staff') throw err('protected_account');
+      if (u.id === db.session) throw err('cannot_delete_self');
+      if (['staff', 'admin', 'supplier'].indexOf(u.role) < 0) throw err('protected_account');
+      if (u.role === 'admin' && db.users.filter(function (x) { return x.role === 'admin'; }).length < 2) throw err('protected_account');
       db.users = db.users.filter(function (x) { return x.id !== b.id; });
       return { ok: true };
     },
-    user_password: function (b) { if (String(b.password || '').length < 8) throw err('password_short'); return { ok: true }; }
+    consign_give: function (b) {
+      var sup = col('suppliers')[b.supplierId], p = product(b.pid), qty = num(b.qty), f = Math.max(1, num(b.f) || 1), loc = b.loc === 'shop' ? 'shop' : 'wh';
+      if (!sup || !p) throw err('not_found'); if (qty <= 0) throw err('bad_doc');
+      var base = r3(qty * f); p.stock = p.stock || { shop: 0, wh: 0 }; p.stock[loc] = r3(num(p.stock[loc]) - base);
+      var id = 'c-' + sup.id + '-' + p.id, al = col('consign')[id] || { id: id, supplierId: sup.id, supplierName: sup.name, pid: p.id, name: p.name, nameEn: p.nameEn || '', unit: (p.units[0] || {}).n || '', given: 0, sold: 0, created: now() };
+      al.given = r3(num(al.given) + base); al.updated = now(); col('consign')[id] = al;
+      var mv = { id: C.uid(), ts: now(), allocId: id, supplierId: sup.id, supplierName: sup.name, pid: p.id, name: p.name, type: 'give', qty: base, unit: b.unit || '', f: f, count: qty, loc: loc, remainingAfter: r3(al.given - al.sold), by: (me() || {}).name || '', byRole: (me() || {}).role || '', note: String(b.note || '') };
+      col('cmoves')[mv.id] = mv; log('consign_give', sup.name, p.name + ' +' + base);
+      return { ok: true, alloc: clone(al), move: clone(mv), stock: stockOf([{ pid: p.id }]) };
+    },
+    consign_return: function (b) {
+      var al = col('consign')[b.allocId], qty = num(b.qty), loc = b.loc === 'shop' ? 'shop' : 'wh';
+      if (!al) throw err('not_found'); if (qty <= 0) throw err('bad_doc'); if (qty > r3(al.given - al.sold) + 0.0005) throw err('not_enough_stock');
+      al.given = r3(al.given - qty); al.updated = now();
+      var p = product(al.pid); if (p) { p.stock = p.stock || { shop: 0, wh: 0 }; p.stock[loc] = r3(num(p.stock[loc]) + qty); }
+      var mv = { id: C.uid(), ts: now(), allocId: al.id, supplierId: al.supplierId, supplierName: al.supplierName, pid: al.pid, name: al.name, type: 'return', qty: qty, loc: loc, remainingAfter: r3(al.given - al.sold), by: (me() || {}).name || '', byRole: (me() || {}).role || '', note: String(b.note || '') };
+      col('cmoves')[mv.id] = mv; log('consign_return', al.supplierName, al.name + ' -' + qty);
+      return { ok: true, alloc: clone(al), move: clone(mv), stock: stockOf([{ pid: al.pid }]) };
+    },
+    consign_report: function (b) {
+      var al = col('consign')[b.allocId], qty = num(b.qty), u = me() || {}, note = String(b.note || '').trim();
+      if (!al) throw err('not_found'); if (u.role === 'supplier' && al.supplierId !== u.sid) throw err('no_permission');
+      if (b.type === 'fix' && !note) throw err('note_required');
+      var before = r3(al.given - al.sold);
+      if (b.type === 'sell') { if (qty <= 0) throw err('bad_doc'); if (qty > before + 0.0005) throw err('not_enough_stock'); al.sold = r3(al.sold + qty); }
+      else { if (qty > al.given + 0.0005) throw err('not_enough_stock'); al.sold = r3(al.given - qty); }
+      al.updated = now(); var after = r3(al.given - al.sold);
+      var mv = { id: C.uid(), ts: now(), allocId: al.id, supplierId: al.supplierId, supplierName: al.supplierName, pid: al.pid, name: al.name, type: b.type, qty: b.type === 'sell' ? qty : r3(after - before), before: before, remainingAfter: after, by: u.name || '', byRole: u.role || '', note: note };
+      col('cmoves')[mv.id] = mv; log('consign_' + b.type, al.supplierName, al.name + ' ' + before + ' > ' + after);
+      return { ok: true, alloc: clone(al), move: clone(mv) };
+    },
+    supplier_load: function () {
+      var u = me(); if (!u || u.role !== 'supplier') throw err('no_permission');
+      var sup = col('suppliers')[u.sid]; if (!sup) throw err('not_found'); var s = col('settings').main || {};
+      return { ok: true, user: pub(u), supplier: { id: sup.id, name: sup.name, phone: sup.phone || '' }, allocs: clone(all('consign').filter(function (a) { return a.supplierId === u.sid; })), moves: clone(all('cmoves').filter(function (m) { return m.supplierId === u.sid; })),
+        shop: { name: s.name || '', nameAr: s.nameAr || '', phone: s.phone || '', whatsapp: s.whatsapp || '', logo: s.logo || '' } };
+    },
+    supplier_account: function (b) {
+      var sup = col('suppliers')[b.supplierId]; if (!sup) throw err('not_found');
+      if (String(b.password || '').length < 8) throw err('password_short');
+      var ex = db.users.filter(function (x) { return x.role === 'supplier' && x.sid === sup.id; })[0];
+      if (db.users.some(function (x) { return x !== ex && x.pw && x.pw === b.password; })) throw err('password_taken');
+      if (ex) { ex.pw = String(b.password); ex.name = sup.name; }
+      else db.users.push({ id: db.users.reduce(function (m, x) { return Math.max(m, x.id); }, 0) + 1, username: 'sup-' + C.uid().slice(0, 6), name: sup.name, role: 'supplier', perms: [], pw: String(b.password), sid: sup.id });
+      return { ok: true };
+    },
+    user_password: function (b) {
+      if (String(b.password || '').length < 8) throw err('password_short');
+      var id = b.id || db.session;
+      if (db.users.some(function (u) { return u.id !== id && u.pw && u.pw === b.password; })) throw err('password_taken');
+      var u = db.users.filter(function (x) { return x.id === id; })[0]; if (u) u.pw = String(b.password);
+      return { ok: true };
+    }
   };
-  var READ = { status: 1, load: 1, site_load: 1, site_public: 1, poll: 1, health: 1, storage: 1, log: 1, users: 1 };
+  var READ = { supplier_load: 1, status: 1, load: 1, site_load: 1, site_public: 1, poll: 1, health: 1, storage: 1, log: 1, users: 1 };
 
+  var SUPPLIER_ACTIONS = ['status', 'logout', 'supplier_load', 'consign_report', 'user_password'];
   function handle(action, body) {
     return ready().then(function () {
       if (!A[action]) throw err('unknown_action');
+      var cur = me(); if (cur && cur.role === 'supplier' && SUPPLIER_ACTIONS.indexOf(action) < 0) throw err('supplier_only');
       var snap = READ[action] ? null : JSON.stringify(db);
       try {
         var r = A[action](body || {});

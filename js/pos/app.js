@@ -9,6 +9,7 @@
     n.push({ id: 'invoices', icon: 'receipt', label: L('الفواتير', 'Invoices') });
     n.push({ id: 'inventory', icon: 'box', label: L('المخزون', 'Stock') });
     if (Store.sees('purchase')) n.push({ id: 'purchases', icon: 'truck', label: L('المشتريات', 'Purchases') });
+    if (Store.sees('purchase')) n.push({ id: 'suppliers', icon: 'swap', label: L('الموردون', 'Suppliers') });
     n.push({ id: 'customers', icon: 'users', label: L('العملاء', 'Customers') });
     if (Store.sees('expenses')) n.push({ id: 'expenses', icon: 'wallet', label: L('المصروفات', 'Expenses') });
     n.push({ id: 'reminders', icon: 'bell', label: L('التنبيهات', 'Alerts'), count: function () { return window.Alerts ? Alerts.count() : 0; } });
@@ -20,6 +21,7 @@
 
   Store.boot('pos').then(function (state) {
     if (state !== 'ready') { location.replace(ROOT + 'login/index.html?next=pos'); return; }
+    if (S.user.role === 'supplier') { location.replace(ROOT + 'supplier/index.html'); return; }
     document.title = L(S.settings.nameAr || 'أبراج الصمود', S.settings.name || 'Abraj Alsumud') + ' - ' + L('نظام البيع', 'Point of sale');
     Shell.mount({ app: 'pos', nav: nav, home: function () { return Store.can('sell') || Store.isViewer() ? 'sell' : 'inventory'; } });
   }, function (e) {

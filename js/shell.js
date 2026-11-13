@@ -35,7 +35,7 @@
   }
   function roleName() {
     var r = S.user.role;
-    return r === 'admin' ? L('صاحب المحل', 'Owner') : r === 'viewer' ? L('دعم - عرض فقط', 'Support - view only') : L('موظف', 'Worker');
+    return r === 'admin' ? L('مدير (صلاحية كاملة)', 'Admin (full control)') : r === 'viewer' ? L('دعم - عرض فقط', 'Support - view only') : r === 'supplier' ? L('مورد', 'Supplier') : L('موظف', 'Worker');
   }
 
   function mount(config) {

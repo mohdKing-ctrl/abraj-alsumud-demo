@@ -289,7 +289,7 @@
           return;
         }
         if ((b = e.target.closest('[data-rmu]'))) { readUnits(); units.splice(+b.getAttribute('data-rmu'), 1); drawUnits(); return; }
-        if (e.target.closest('#pf-scan')) Scanner.open(function (code) { f.sku.value = code; });
+        if (e.target.closest('#pf-scan')) Scanner.open(function (code) { f.sku.value = code; warnTaken(code); });
       });
       f.addEventListener('input', function (e) {
         if (e.target.closest('#pf-units') && e.target.getAttribute('data-k') === 'n') {
@@ -302,6 +302,13 @@
       f.addEventListener('change', function (e) { if (e.target.closest('#pf-units')) { readUnits(); fillUnitSelects(); } else hints(); });
       f.addEventListener('submit', function (e) { e.preventDefault(); });
 
+      /* a code that another product already has: say so the moment it is typed or scanned */
+      function warnTaken(code) {
+        code = C.normDigits(code).trim(); if (!code) return;
+        var o = S.products.filter(function (x) { return (!p || x.id !== p.id) && (x.sku === code || (x.units || []).some(function (u) { return u.bc === code; })); })[0];
+        if (o) C.toast(L('تنبيه: الباركود ', 'Note: barcode ') + code + L(' مسجّل للمنتج «', ' belongs to "') + o.name + L('»', '"'), 'warn', 6000);
+      }
+      f.sku.addEventListener('change', function () { warnTaken(f.sku.value); });
       q('#pf-cancel').onclick = function () { m.close(); };
       q('#pf-save').onclick = function () {
         if (uploading) return C.toast(L('انتظر حتى ينتهي رفع الصورة', 'Wait for the photo upload to finish'), 'warn');
@@ -316,6 +323,16 @@
           seen[u.n] = 1;
         });
         if (bad) return C.toast(bad, 'warn');
+        // every barcode belongs to ONE product: the product code and each unit barcode, across all products (the server checks again)
+        var sku = C.normDigits(f.sku.value).trim(), mine = [sku].concat(units.map(function (u) { return u.bc; })).filter(Boolean), seenCode = {};
+        for (var ci = 0; ci < mine.length; ci++) { if (seenCode[mine[ci]]) return C.toast(C.errText({ code: 'barcode_dup' }) + ' (' + mine[ci] + ')', 'err', 6000); seenCode[mine[ci]] = 1; }
+        var clash = null;
+        S.products.forEach(function (o) {
+          if (clash || (p && o.id === p.id)) return;
+          var theirs = [o.sku || ''].concat((o.units || []).map(function (u) { return u.bc || ''; }));
+          mine.forEach(function (code) { if (!clash && theirs.indexOf(code) >= 0) clash = { code: code, name: o.name }; });
+        });
+        if (clash) { f.sku.classList.add('err'); return C.toast(L('الباركود ', 'Barcode ') + clash.code + L(' مسجّل للمنتج «', ' already belongs to "') + clash.name + L('». كل باركود لمنتج واحد فقط.', '". Each barcode is for one product only.'), 'err', 7000); }
         if (!units.some(function (u) { return u.r > 0 || u.w > 0; }) && !f._warned) { f._warned = true; return C.toast(L('لم تكتب أي سعر بيع. اضغط حفظ مرة أخرى للمتابعة بدون سعر.', 'No selling price typed. Press Save again to continue without one.'), 'warn', 5000); }
         var doc = Object.assign({}, p || {}, {
           id: p ? p.id : C.uid(), name: name, nameEn: f.nameEn.value.trim(), cat: f.cat.value, sku: C.normDigits(f.sku.value).trim(), supplier: f.supplier.value.trim(),

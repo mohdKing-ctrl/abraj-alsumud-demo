@@ -8,8 +8,8 @@
       show: { cats: true, products: true, about: true, features: true, posts: true, subscribe: true, contact: true },
       hero: {
         titleAr: 'كل ما تحتاجه مزرعتك وبيتك.. بالجملة والمفرد', titleEn: 'Everything your farm and home need - wholesale and retail',
-        textAr: 'أبراج الصمود: موردون ووكلاء لشركات عالمية. مواد زراعية ومبيدات حشرية، مواد منزلية واستهلاكية، وعلب التعبئة ومستلزمات التمور - من سوق بهلاء إلى كل أنحاء السلطنة.',
-        textEn: 'Abraj Alsumud: suppliers and agents for international companies. Agricultural supplies and pesticides, household and consumer goods, jars and dates supplies - from Bahla Souq to all of Oman.',
+        textAr: 'أبراج الصمود: موردون ووكلاء لشركات عالمية. مواد زراعية ومبيدات حشرية، مواد منزلية واستهلاكية، وعلب التعبئة ومستلزمات التمور - من بهلاء إلى كل أنحاء السلطنة.',
+        textEn: 'Abraj Alsumud: suppliers and agents for international companies. Agricultural supplies and pesticides, household and consumer goods, jars and dates supplies - from Bahla to all of Oman.',
         img: ''
       },
       about: {
